@@ -31,19 +31,12 @@ enum PSFileUploadError {
 };
 typedef int PSFileUploadError;
 
-enum PSFileUploadDirection {
-    CDV_TRANSFER_UPLOAD = 1,
-    CDV_TRANSFER_DOWNLOAD = 2,
-};
-typedef int PSFileUploadDirection;
-
 // Magic value within the options dict used to set a cookie.
-extern NSString* const kOptionsKeyCookie;
+extern NSString* const kPSUOptionsKeyCookie;
 
 @interface PSFileUpload : CDVPlugin {}
 
 - (void)upload:(CDVInvokedUrlCommand*)command;
-- (void)download:(CDVInvokedUrlCommand*)command;
 - (NSString*)escapePathComponentForUrlString:(NSString*)urlString;
 
 // Visible for testing.
@@ -68,7 +61,6 @@ extern NSString* const kOptionsKeyCookie;
 
 @property (strong) NSMutableData* responseData; // atomic
 @property (nonatomic, strong) PSFileUpload* command;
-@property (nonatomic, assign) PSFileUploadDirection direction;
 @property (nonatomic, strong) NSURLConnection* connection;
 @property (nonatomic, copy) NSString* callbackId;
 @property (nonatomic, copy) NSString* objectId;
