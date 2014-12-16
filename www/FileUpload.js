@@ -23,7 +23,7 @@
 
 var argscheck = require('cordova/argscheck'),
     exec = require('cordova/exec'),
-    FileTransferError = require('./FileTransferError'),
+    FileUploadError = require('./FileUploadError'),
     ProgressEvent = require('org.apache.cordova.file.ProgressEvent');
 
 function newProgressEvent(result) {
@@ -69,10 +69,10 @@ function getBasicAuthHeader(urlString) {
 var idCounter = 0;
 
 /**
- * FileTransfer uploads a file to a remote server.
+ * FileUpload uploads a file to a remote server.
  * @constructor
  */
-var FileTransfer = function() {
+var FileUpload = function() {
     this._id = ++idCounter;
     this.onprogress = null; // optional callback
 };
@@ -87,8 +87,8 @@ var FileTransfer = function() {
 * @param options {FileUploadOptions} Optional parameters such as file name and mimetype
 * @param trustAllHosts {Boolean} Optional trust all hosts (e.g. for self-signed certs), defaults to false
 */
-FileTransfer.prototype.upload = function(filePath, server, successCallback, errorCallback, options, trustAllHosts) {
-    argscheck.checkArgs('ssFFO*', 'FileTransfer.upload', arguments);
+FileUpload.prototype.upload = function(filePath, server, successCallback, errorCallback, options, trustAllHosts) {
+    argscheck.checkArgs('ssFFO*', 'FileUpload.upload', arguments);
     // check for options
     var fileKey = null;
     var fileName = null;
@@ -127,7 +127,7 @@ FileTransfer.prototype.upload = function(filePath, server, successCallback, erro
     }
 
     var fail = errorCallback && function(e) {
-        var error = new FileTransferError(e.code, e.source, e.target, e.http_status, e.body);
+        var error = new FileUploadError(e.code, e.source, e.target, e.http_status, e.body);
         errorCallback(error);
     };
 
@@ -141,70 +141,15 @@ FileTransfer.prototype.upload = function(filePath, server, successCallback, erro
             successCallback && successCallback(result);
         }
     };
-    exec(win, fail, 'FileTransfer', 'upload', [filePath, server, fileKey, fileName, mimeType, params, trustAllHosts, chunkedMode, headers, this._id, httpMethod]);
-};
-
-/**
- * Downloads a file form a given URL and saves it to the specified directory.
- * @param source {String}          URL of the server to receive the file
- * @param target {String}         Full path of the file on the device
- * @param successCallback (Function}  Callback to be invoked when upload has completed
- * @param errorCallback {Function}    Callback to be invoked upon error
- * @param trustAllHosts {Boolean} Optional trust all hosts (e.g. for self-signed certs), defaults to false
- * @param options {FileDownloadOptions} Optional parameters such as headers
- */
-FileTransfer.prototype.download = function(source, target, successCallback, errorCallback, trustAllHosts, options) {
-    argscheck.checkArgs('ssFF*', 'FileTransfer.download', arguments);
-    var self = this;
-
-    var basicAuthHeader = getBasicAuthHeader(source);
-    if (basicAuthHeader) {
-        options = options || {};
-        options.headers = options.headers || {};
-        options.headers[basicAuthHeader.name] = basicAuthHeader.value;
-    }
-
-    var headers = null;
-    if (options) {
-        headers = options.headers || null;
-    }
-
-    var win = function(result) {
-        if (typeof result.lengthComputable != "undefined") {
-            if (self.onprogress) {
-                return self.onprogress(newProgressEvent(result));
-            }
-        } else if (successCallback) {
-            var entry = null;
-            if (result.isDirectory) {
-                entry = new (require('org.apache.cordova.file.DirectoryEntry'))();
-            }
-            else if (result.isFile) {
-                entry = new (require('org.apache.cordova.file.FileEntry'))();
-            }
-            entry.isDirectory = result.isDirectory;
-            entry.isFile = result.isFile;
-            entry.name = result.name;
-            entry.fullPath = result.fullPath;
-            entry.filesystem = new FileSystem(result.filesystem == window.PERSISTENT ? 'persistent' : 'temporary');
-            successCallback(entry);
-        }
-    };
-
-    var fail = errorCallback && function(e) {
-        var error = new FileTransferError(e.code, e.source, e.target, e.http_status, e.body);
-        errorCallback(error);
-    };
-
-    exec(win, fail, 'FileTransfer', 'download', [source, target, trustAllHosts, this._id, headers]);
+    exec(win, fail, 'FileUpload', 'upload', [filePath, server, fileKey, fileName, mimeType, params, trustAllHosts, chunkedMode, headers, this._id, httpMethod]);
 };
 
 /**
  * Aborts the ongoing file transfer on this object. The original error
  * callback for the file transfer will be called if necessary.
  */
-FileTransfer.prototype.abort = function() {
-    exec(null, null, 'FileTransfer', 'abort', [this._id]);
+FileUpload.prototype.abort = function() {
+    exec(null, null, 'FileUpload', 'abort', [this._id]);
 };
 
-module.exports = FileTransfer;
+module.exports = FileUpload;
