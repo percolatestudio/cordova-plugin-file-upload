@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
     xmlns:android="http://schemas.android.com/apk/res/android"
-    id="com.percolatestudio.cordova.file-upload"
+    id="com.percolatestudio.cordova.fileupload"
     version="0.1.0">
     <name>File Upload</name>
     <description>Cordova File Upload Plugin, supports non-multipart file uploads compatible with Amazon S3.</description>
