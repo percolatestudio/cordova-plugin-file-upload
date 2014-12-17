@@ -178,25 +178,22 @@ public class PSFileUpload extends CordovaPlugin {
 
     @Override
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
-        if (action.equals("upload") || action.equals("download")) {
-            String source = args.getString(0);
-            String target = args.getString(1);
-
-            if (action.equals("upload")) {
-                try {
-                    source = URLDecoder.decode(source, "UTF-8");
-                    upload(source, target, args, callbackContext);
-                } catch (UnsupportedEncodingException e) {
-                    callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.MALFORMED_URL_EXCEPTION, "UTF-8 error."));
-                }
-            } else {
-                download(source, target, args, callbackContext);
-            }
-            return true;
-        } else if (action.equals("abort")) {
+        if (action.equals("abort")) {
             String objectId = args.getString(0);
             abort(objectId);
             callbackContext.success();
+            return true;
+        }
+        else if (action.equals("upload")) {
+            String source = args.getString(0);
+            String target = args.getString(1);
+
+            try {
+                source = URLDecoder.decode(source, "UTF-8");
+                upload(source, target, args, callbackContext);
+            } catch (UnsupportedEncodingException e) {
+                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.MALFORMED_URL_EXCEPTION, "UTF-8 error."));
+            }
             return true;
         }
         return false;
