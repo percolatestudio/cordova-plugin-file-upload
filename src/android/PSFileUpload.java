@@ -66,9 +66,9 @@ import android.os.Build;
 import android.util.Log;
 import android.webkit.CookieManager;
 
-public class FileTransfer extends CordovaPlugin {
+public class PSFileUpload extends CordovaPlugin {
 
-    private static final String LOG_TAG = "FileTransfer";
+    private static final String LOG_TAG = "PSFileUpload";
     private static final String LINE_START = "--";
     private static final String LINE_END = "\r\n";
     private static final String BOUNDARY =  "+++++";
@@ -290,8 +290,8 @@ public class FileTransfer extends CordovaPlugin {
                 int fixedLength = -1;
                 try {
                     // Create return object
-                    FileUploadResult result = new FileUploadResult();
-                    FileProgressResult progress = new FileProgressResult();
+                    PSFileUploadResult result = new PSFileUploadResult();
+                    PSFileProgressResult progress = new PSFileProgressResult();
 
                     //------------------ CLIENT REQUEST
                     // Open a HTTP connection to the URL based on protocol
@@ -611,198 +611,6 @@ public class FileTransfer extends CordovaPlugin {
             }
         }
         return arg;
-    }
-
-    /**
-     * Downloads a file form a given URL and saves it to the specified directory.
-     *
-     * @param source        URL of the server to receive the file
-     * @param target            Full path of the file on the file system
-     */
-    private void download(final String source, final String target, JSONArray args, CallbackContext callbackContext) throws JSONException {
-        Log.d(LOG_TAG, "download " + source + " to " +  target);
-
-        final CordovaResourceApi resourceApi = webView.getResourceApi();
-
-        final boolean trustEveryone = args.optBoolean(2);
-        final String objectId = args.getString(3);
-        final JSONObject headers = args.optJSONObject(4);
-        
-        final Uri sourceUri = resourceApi.remapUri(Uri.parse(source));
-        // Accept a path or a URI for the source.
-        Uri tmpTarget = Uri.parse(target);
-        final Uri targetUri = resourceApi.remapUri(
-            tmpTarget.getScheme() != null ? tmpTarget : Uri.fromFile(new File(target)));
-
-        int uriType = CordovaResourceApi.getUriType(sourceUri);
-        final boolean useHttps = uriType == CordovaResourceApi.URI_TYPE_HTTPS;
-        final boolean isLocalTransfer = !useHttps && uriType != CordovaResourceApi.URI_TYPE_HTTP;
-        if (uriType == CordovaResourceApi.URI_TYPE_UNKNOWN) {
-            JSONObject error = createFileTransferError(INVALID_URL_ERR, source, target, null, 0);
-            Log.e(LOG_TAG, "Unsupported URI: " + targetUri);
-            callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.IO_EXCEPTION, error));
-            return;
-        }
-        
-        // TODO: refactor to also allow resources & content:
-        if (!isLocalTransfer && !Config.isUrlWhiteListed(source)) {
-            Log.w(LOG_TAG, "Source URL is not in white list: '" + source + "'");
-            JSONObject error = createFileTransferError(CONNECTION_ERR, source, target, null, 401);
-            callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.IO_EXCEPTION, error));
-            return;
-        }
-
-        
-        final RequestContext context = new RequestContext(source, target, callbackContext);
-        synchronized (activeRequests) {
-            activeRequests.put(objectId, context);
-        }
-        
-        cordova.getThreadPool().execute(new Runnable() {
-            public void run() {
-                if (context.aborted) {
-                    return;
-                }
-                HttpURLConnection connection = null;
-                HostnameVerifier oldHostnameVerifier = null;
-                SSLSocketFactory oldSocketFactory = null;
-                File file = null;
-                PluginResult result = null;
-                TrackingInputStream inputStream = null;
-
-                OutputStream outputStream = null;
-                try {
-                    OpenForReadResult readResult = null;
-                    outputStream = resourceApi.openOutputStream(targetUri);
-
-                    file = resourceApi.mapUriToFile(targetUri);
-                    context.targetFile = file;
-                    
-                    Log.d(LOG_TAG, "Download file:" + sourceUri);
-
-                    FileProgressResult progress = new FileProgressResult();
-
-                    if (isLocalTransfer) {
-                        readResult = resourceApi.openForRead(sourceUri);
-                        if (readResult.length != -1) {
-                            progress.setLengthComputable(true);
-                            progress.setTotal(readResult.length);
-                        }
-                        inputStream = new SimpleTrackingInputStream(readResult.inputStream);
-                    } else {
-                        // connect to server
-                        // Open a HTTP connection to the URL based on protocol
-                        connection = resourceApi.createHttpConnection(sourceUri);
-                        if (useHttps && trustEveryone) {
-                            // Setup the HTTPS connection class to trust everyone
-                            HttpsURLConnection https = (HttpsURLConnection)connection;
-                            oldSocketFactory = trustAllHosts(https);
-                            // Save the current hostnameVerifier
-                            oldHostnameVerifier = https.getHostnameVerifier();
-                            // Setup the connection not to verify hostnames
-                            https.setHostnameVerifier(DO_NOT_VERIFY);
-                        }
-        
-                        connection.setRequestMethod("GET");
-        
-                        // TODO: Make OkHttp use this CookieManager by default.
-                        String cookie = CookieManager.getInstance().getCookie(sourceUri.toString());
-                        if(cookie != null)
-                        {
-                            connection.setRequestProperty("cookie", cookie);
-                        }
-                        
-                        // This must be explicitly set for gzip progress tracking to work.
-                        connection.setRequestProperty("Accept-Encoding", "gzip");
-    
-                        // Handle the other headers
-                        if (headers != null) {
-                            addHeadersToRequest(connection, headers);
-                        }
-        
-                        connection.connect();
-    
-                        if (connection.getContentEncoding() == null || connection.getContentEncoding().equalsIgnoreCase("gzip")) {
-                            // Only trust content-length header if we understand
-                            // the encoding -- identity or gzip
-                            progress.setLengthComputable(true);
-                            progress.setTotal(connection.getContentLength());
-                        }
-                        inputStream = getInputStream(connection);
-                    }
-                    
-                    try {
-                        synchronized (context) {
-                            if (context.aborted) {
-                                return;
-                            }
-                            context.currentInputStream = inputStream;
-                        }
-                        
-                        // write bytes to file
-                        byte[] buffer = new byte[MAX_BUFFER_SIZE];
-                        int bytesRead = 0;
-                        while ((bytesRead = inputStream.read(buffer)) > 0) {
-                            outputStream.write(buffer, 0, bytesRead);
-                            // Send a progress event.
-                            progress.setLoaded(inputStream.getTotalRawBytesRead());
-                            PluginResult progressResult = new PluginResult(PluginResult.Status.OK, progress.toJSONObject());
-                            progressResult.setKeepCallback(true);
-                            context.sendPluginResult(progressResult);
-                        }
-                    } finally {
-                        context.currentInputStream = null;
-                        safeClose(inputStream);
-                        safeClose(outputStream);
-                    }
-    
-                    Log.d(LOG_TAG, "Saved file: " + target);
-    
-                    // create FileEntry object
-                    JSONObject fileEntry = FileUtils.getEntry(file);
-                    
-                    result = new PluginResult(PluginResult.Status.OK, fileEntry);
-                } catch (FileNotFoundException e) {
-                    JSONObject error = createFileTransferError(FILE_NOT_FOUND_ERR, source, target, connection);
-                    Log.e(LOG_TAG, error.toString(), e);
-                    result = new PluginResult(PluginResult.Status.IO_EXCEPTION, error);
-                } catch (IOException e) {
-                    JSONObject error = createFileTransferError(CONNECTION_ERR, source, target, connection);
-                    Log.e(LOG_TAG, error.toString(), e);
-                    result = new PluginResult(PluginResult.Status.IO_EXCEPTION, error);
-                } catch (JSONException e) {
-                    Log.e(LOG_TAG, e.getMessage(), e);
-                    result = new PluginResult(PluginResult.Status.JSON_EXCEPTION);
-                } catch (Throwable e) {
-                    JSONObject error = createFileTransferError(CONNECTION_ERR, source, target, connection);
-                    Log.e(LOG_TAG, error.toString(), e);
-                    result = new PluginResult(PluginResult.Status.IO_EXCEPTION, error);
-                } finally {
-                    safeClose(outputStream);
-                    synchronized (activeRequests) {
-                        activeRequests.remove(objectId);
-                    }
-
-                    if (connection != null) {
-                        // Revert back to the proper verifier and socket factories
-                        if (trustEveryone && useHttps) {
-                            HttpsURLConnection https = (HttpsURLConnection) connection;
-                            https.setHostnameVerifier(oldHostnameVerifier);
-                            https.setSSLSocketFactory(oldSocketFactory);
-                        }
-                    }
-
-                    if (result == null) {
-                        result = new PluginResult(PluginResult.Status.ERROR, createFileTransferError(CONNECTION_ERR, source, target, connection));
-                    }
-                    // Remove incomplete download.
-                    if (result.getStatus() != PluginResult.Status.OK.ordinal() && file != null) {
-                        file.delete();
-                    }
-                    context.sendPluginResult(result);
-                }
-            }
-        });
     }
 
     /**
