@@ -19,7 +19,7 @@
  * Modified by Percolate Studio to support 
  * non-multipart uploads.
  */
-package com.percolatestudio.cordova.fileupload.FileUpload;
+package com.percolatestudio.cordova.fileupload;
 
 import org.json.JSONException;
 import org.json.JSONObject;

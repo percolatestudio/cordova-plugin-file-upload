@@ -19,7 +19,7 @@
  * Modified by Percolate Studio to support 
  * non-multipart uploads.
  */
-package com.percolatestudio.cordova.fileupload.FileUpload;
+package com.percolatestudio.cordova.fileupload;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -178,6 +178,7 @@ public class PSFileUpload extends CordovaPlugin {
 
     @Override
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
+        Log.d(LOG_TAG, "executing action: " + action);
         if (action.equals("abort")) {
             String objectId = args.getString(0);
             abort(objectId);

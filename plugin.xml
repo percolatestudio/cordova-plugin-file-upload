@@ -23,7 +23,7 @@
     <platform name="android">
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="FileUpload" >
-                <param name="android-package" value="com.percolatestudio.cordova.fileupload.FileUpload"/>
+                <param name="android-package" value="com.percolatestudio.cordova.fileupload.PSFileUpload"/>
             </feature>
         </config-file>
 
