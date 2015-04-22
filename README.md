@@ -7,3 +7,9 @@ only the raw file to be included in the body of the request, without mulitpart b
 Install like `cordova plugin add https://github.com/percolatestudio/cordova-plugin-file-upload.git`.
 
 Usage is the same as the standard File Transfer plugin. Currently only iOS and Android supported.
+
+## License 
+
+MIT. (c) Percolate Studio, maintained by Tim Hingston (@timbotnik).
+
+File Transfer was developed as part of the [Verso](versoapp.com) project.
