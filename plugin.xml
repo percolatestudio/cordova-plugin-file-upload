@@ -8,8 +8,8 @@
     <license>Apache 2.0</license>
     <keywords>cordova,file,upload,s3</keywords>
     <repo>https://github.com/percolatestudio/cordova-plugin-file-upload.git</repo>
-    
-    <dependency id="org.apache.cordova.file" />
+
+    <dependency id="cordova-plugin-file" />
 
     <js-module src="www/FileUploadError.js" name="FileUploadError">
         <clobbers target="window.FileUploadError" />
